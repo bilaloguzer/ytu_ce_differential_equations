@@ -4,7 +4,7 @@
 #include <ctype.h>		//used only to make text lowercase
 
 #define MAX_LENGTH 511
-#define MAX_QUOTE 4
+#define MAX_QUOTE 100
 
 
 int compute_number_of_words(char *text);
@@ -23,27 +23,13 @@ int main(){
 	int i=0, j;
 	FILE *fptr;
 	
-	fptr = fopen("critics_1.txt", "r");
+	fptr = fopen("hayyam.txt", "r");
 	if( fptr == NULL ){
 		printf("File couldn't be opened. Exiting.");
 		return 1;
 	}
-	
-	/*
-	char **quotes, *words;
-	int **vectors, wordcount;
-	
-	
-	quotes = (char**) malloc(MAX_QUOTE*sizeof(char));
-	if( quotes == NULL ){
-		printf("Memory allocation failed. Exiting.");
-		return -1;
-	}
-	for( i=0; i<MAX_QUOTE; i++ ){
-		quotes[i] = (char*) malloc(MAX_LENGHT*sizeof(char));
-	}*/
-	
-	char quotes[MAX_QUOTE][MAX_LENGTH], wordsdic[200][MAX_LENGTH];
+
+	char quotes[MAX_QUOTE][MAX_LENGTH], wordsdic[2000][MAX_LENGTH];
 	int wordvectors[200][MAX_LENGTH];
 	
 	for( i=0; i<MAX_QUOTE; i++ ){
@@ -51,7 +37,7 @@ int main(){
 	}
 	fclose(fptr);
 	for( i=0; i<MAX_QUOTE; i++ ){
-		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
+		printf("\nMETIN %d\ncount test --> %d\n", i+1, compute_number_of_words(quotes[i]));
 		printf("len = %d\n", strlen(quotes[i]));
 		printf("%s\n", quotes[i]);
 	}
@@ -69,7 +55,8 @@ int main(){
 		printf("%s\n", quotes[i]);
 	}
 	
-	int wordcount = fill_dictionary(wordsdic, quotes);
+	int wordcount = fill_dictionary(wordsdic, quotes);  	//FILL_DICTIONARY'DE SORUN VAR. 10 YA DA 15'TE HATA ALIP ÇIKIYOR.
+	
 	
 	printf("\n-------------------DICTIONARY FORMED--------------------------\n\n");
 	printf("wordcount = %d\n", wordcount);
@@ -93,12 +80,6 @@ int main(){
     	}
 	}
 	
-	/*
-	//BU DA YAZDIRIYOR.
-	if( fgets(quotes[0], MAX_LENGHT, fptr) != NULL ){
-		printf("%s\n", quotes[0]);
-	}*/
-
 	
 	return 0;
 }
