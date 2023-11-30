@@ -6,6 +6,7 @@
 #define MAX_LENGTH 511
 #define MAX_QUOTE 100
 
+//TODO: REMOVE SPACES AT THE END OF THE SENTENCE AND DATA CLEARING IS DONE.
 
 int compute_number_of_words(char *text);
 void text_to_vector(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH], int vectors[][MAX_LENGTH], int wordcount) ;
@@ -73,6 +74,7 @@ int main(){
     }
 	
 	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
+	
 	for( i=0; i<MAX_QUOTE; i++ ){
     	printf("\n%d. METIN: %s\n%d. METNIN VEKTOR HALI:\n", i+1, quotes[i] ,i+1);
     	for (j = 0; j < wordcount; j++) {
@@ -142,7 +144,7 @@ int compute_number_of_words(char *text){		//HOW CAN WE?
 }
 
 void remove_punctuation(char *text){
-	const char *punctuations = "!()-[]{};:“”,<>./?@#$%^&*_~—-";
+	const char *punctuations = "!()-[]{};:“”,<>./?@#$%^&*\"_~—-";
 	int i=0, len = strlen(text);
 	while( i<len && text[i] != '\0' ){
 		if( strchr(punctuations, text[i]) ){
