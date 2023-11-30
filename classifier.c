@@ -6,11 +6,11 @@
 #define MAX_LENGTH 511
 #define MAX_QUOTE 4
 
-//TODO: Remove punctuations and multiple spaces properly.
 
 int compute_number_of_words(char *text);
 void text_to_vector(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH], int vectors[][MAX_LENGTH], int wordcount) ;
 void remove_punctuation(char *text);
+void remove_multiple_spaces(char *text, int tlen);
 void organize_text(char *text);
 void slide_text(char *text, int tlen, int start, int step, int direction);
 int fill_dictionary(char wordsdic[][MAX_LENGTH], char quotes[][MAX_LENGTH]);
@@ -57,6 +57,7 @@ int main(){
 	}
 	for( i=0; i<MAX_QUOTE; i++ ){
 		remove_punctuation(quotes[i]);
+		remove_multiple_spaces(quotes[i], strlen(quotes[i]));
 	}
 	make_lowercase(quotes);
 	organize_add(quotes);
@@ -164,9 +165,25 @@ void remove_punctuation(char *text){
 	int i=0, len = strlen(text);
 	while( i<len && text[i] != '\0' ){
 		if( strchr(punctuations, text[i]) ){
-			slide_text(text, strlen(text), i, 1, 1);
+			text[i] = ' ';
 		}
 		i++;
+	}
+}
+
+void remove_multiple_spaces(char *text, int tlen){
+	int i=0, j, tmp;
+	while( text[i++] != '\0' ){
+		if( text[i] == ' ' ){
+			tmp = 0;
+			j = i;
+			while( text[j++] == ' ' ){
+				tmp++;
+			}
+			if( tmp > 1 ){
+				slide_text(text, tlen, i, tmp-1, 1);
+			}			
+		}
 	}
 }
 
