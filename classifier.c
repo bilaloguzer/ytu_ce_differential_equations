@@ -5,19 +5,20 @@
 
 #define MAX_LENGTH 511
 #define MAX_QUOTE 100
+#define DIC_SIZE 2500
 
 //TODO: REMOVE SPACES AT THE END OF THE SENTENCE AND DATA CLEARING IS DONE.
 
 int compute_number_of_words(char *text);
-void text_to_vector(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH], int vectors[][MAX_LENGTH], int wordcount) ;
+void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) ;
 void remove_punctuation(char *text);
 void remove_multiple_spaces(char *text, int tlen);
 void organize_text(char *text);
 void slide_text(char *text, int tlen, int start, int step, int direction);
-int fill_dictionary(char wordsdic[][MAX_LENGTH], char quotes[][MAX_LENGTH]);
-int check_occurence(char dictionary[][MAX_LENGTH], char *word, int check_until);
-void make_lowercase(char quotes[][MAX_LENGTH]);
-void organize_add(char quotes[][MAX_LENGTH]);
+int fill_dictionary(char **wordsdic, char **quotes);
+int check_occurence(char **dictionary, char *word, int check_until);
+void make_lowercase(char **quotes);
+void organize_add(char **quotes);
 
 
 int main(){
@@ -30,18 +31,40 @@ int main(){
 		return 1;
 	}
 
-	char quotes[MAX_QUOTE][MAX_LENGTH], wordsdic[2000][MAX_LENGTH];
-	int wordvectors[200][MAX_LENGTH];
+	char **quotes, **wordsdic;
+	int **wordvectors;
+
+	quotes = (char**) malloc(MAX_QUOTE*sizeof(char*));
+	if(quotes==NULL){
+		printf("Memory allocation failed. Exiting.");
+		return 1;
+	}
+	for( i=0; i<MAX_QUOTE; i++ ){
+		quotes[i] = (char*) malloc(MAX_LENGTH*sizeof(char));
+	}
+	
+	wordsdic = (char**)malloc(DIC_SIZE*sizeof(char*));
+	if(wordsdic==NULL){
+		printf("Memory allocation failed. Exiting.");
+		return 1;
+	}
+	for( i=0; i<2000; i++ ){
+		wordsdic[i] = (char*) malloc(MAX_LENGTH*sizeof(char));
+	}
+	
+	wordvectors = (int**)malloc(DIC_SIZE*sizeof(int*));
+	if( wordvectors == NULL ){
+		printf("Memory allocation failed. Exiting.");
+		return 1;
+	}
+	for( i=0; i<2000; i++ ){
+		wordvectors[i] = (int*) malloc(MAX_QUOTE*sizeof(int));
+	}
 	
 	for( i=0; i<MAX_QUOTE; i++ ){
 		fgets(quotes[i], MAX_LENGTH, fptr);
 	}
 	fclose(fptr);
-	for( i=0; i<MAX_QUOTE; i++ ){
-		printf("\nMETIN %d\ncount test --> %d\n", i+1, compute_number_of_words(quotes[i]));
-		printf("len = %d\n", strlen(quotes[i]));
-		printf("%s\n", quotes[i]);
-	}
 	for( i=0; i<MAX_QUOTE; i++ ){
 		remove_punctuation(quotes[i]);
 		remove_multiple_spaces(quotes[i], strlen(quotes[i]));
@@ -65,16 +88,16 @@ int main(){
 	for( i=0; i<MAX_QUOTE; i++ ){
 		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
 		printf("len = %d\n", strlen(quotes[i]));
-		printf("%s\n", quotes[i]);
+		printf("%s", quotes[i]);
 	}
 	
     printf("\nUnique words in the dictionary:");
     for (i = 0; i < wordcount; i++) {
         printf("\n%d: %s", i + 1, wordsdic[i]);
     }
-	
+    
 	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
-	
+
 	for( i=0; i<MAX_QUOTE; i++ ){
     	printf("\n%d. METIN: %s\n%d. METNIN VEKTOR HALI:\n", i+1, quotes[i] ,i+1);
     	for (j = 0; j < wordcount; j++) {
@@ -82,11 +105,10 @@ int main(){
     	}
 	}
 	
-	
 	return 0;
 }
 
-int fill_dictionary(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH]) {
+int fill_dictionary(char **dictionary, char **quotes) {
     int i, j, count = 0, tmp = 0;
     char word[MAX_LENGTH];
 
@@ -121,7 +143,7 @@ int fill_dictionary(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH]) {
     return count;
 }
 
-int check_occurence(char dictionary[][MAX_LENGTH], char *word, int check_until){
+int check_occurence(char **dictionary, char *word, int check_until){
 	int i=0;
 	while( i<check_until){
 		if( strcmp(dictionary[i], word) == 0 ){
@@ -170,7 +192,7 @@ void remove_multiple_spaces(char *text, int tlen){
 	}
 }
 
-void make_lowercase(char quotes[][MAX_LENGTH]){
+void make_lowercase(char **quotes){
 	int i, j, len;
 	for( i=0; i<MAX_QUOTE; i++ ){
 		len = strlen(quotes[i]);
@@ -182,7 +204,7 @@ void make_lowercase(char quotes[][MAX_LENGTH]){
 	}
 }
 
-void text_to_vector(char dictionary[][MAX_LENGTH], char quotes[][MAX_LENGTH], int vectors[][MAX_LENGTH], int wordcount) {
+void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) {
 	int i, j;
 	for( i=0; i<MAX_QUOTE; i++ ){
 		//Eðer sözlükteki karþýlýk gelen kelime metinde var ise vektörün orasýný 1 yap, yoksa 0 yap.
@@ -214,7 +236,7 @@ void slide_text(char *text, int tlen, int start, int step, int direction){	//1 i
 	}
 }
 
-void organize_add(char quotes[][MAX_LENGTH]){
+void organize_add(char **quotes){
 	int i, j, len;
 	for( i=0; i<MAX_QUOTE; i++ ){
 		len = strlen(quotes[i]);
