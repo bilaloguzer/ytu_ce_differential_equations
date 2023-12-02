@@ -5,7 +5,7 @@
 
 #define MAX_LENGTH 511
 #define MAX_QUOTE 100
-#define DIC_SIZE 2500
+#define DICT_SIZE 2500
 
 //TODO: REMOVE SPACES AT THE END OF THE SENTENCE AND DATA CLEARING IS DONE.
 
@@ -34,7 +34,7 @@ int main(){
 	char **quotes, **wordsdic;
 	int **wordvectors;
 
-	quotes = (char**) malloc(MAX_QUOTE*sizeof(char*));
+	quotes = (char**) malloc(MAX_QUOTE*sizeof(char*));				//Allocating memory for quotes, dictionary and vectors.
 	if(quotes==NULL){
 		printf("Memory allocation failed. Exiting.");
 		return 1;
@@ -43,22 +43,22 @@ int main(){
 		quotes[i] = (char*) malloc(MAX_LENGTH*sizeof(char));
 	}
 	
-	wordsdic = (char**)malloc(DIC_SIZE*sizeof(char*));
+	wordsdic = (char**)malloc(DICT_SIZE*sizeof(char*));
 	if(wordsdic==NULL){
 		printf("Memory allocation failed. Exiting.");
 		return 1;
 	}
-	for( i=0; i<2000; i++ ){
+	for( i=0; i<DICT_SIZE; i++ ){
 		wordsdic[i] = (char*) malloc(MAX_LENGTH*sizeof(char));
 	}
 	
-	wordvectors = (int**)malloc(DIC_SIZE*sizeof(int*));
-	if( wordvectors == NULL ){
+	wordvectors = (int**) malloc(MAX_QUOTE*sizeof(int*));
+	if(wordvectors==NULL){
 		printf("Memory allocation failed. Exiting.");
 		return 1;
 	}
-	for( i=0; i<2000; i++ ){
-		wordvectors[i] = (int*) malloc(MAX_QUOTE*sizeof(int));
+	for( i=0; i<MAX_QUOTE; i++ ){
+		wordvectors[i] = (int*) malloc(DICT_SIZE*sizeof(int));
 	}
 	
 	for( i=0; i<MAX_QUOTE; i++ ){
@@ -79,7 +79,7 @@ int main(){
 		printf("%s\n", quotes[i]);
 	}
 	
-	int wordcount = fill_dictionary(wordsdic, quotes);  	//FILL_DICTIONARY'DE SORUN VAR. 10 YA DA 15'TE HATA ALIP ÇIKIYOR.
+	int wordcount = fill_dictionary(wordsdic, quotes); 
 	
 	
 	printf("\n-------------------DICTIONARY FORMED--------------------------\n\n");
@@ -88,7 +88,7 @@ int main(){
 	for( i=0; i<MAX_QUOTE; i++ ){
 		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
 		printf("len = %d\n", strlen(quotes[i]));
-		printf("%s", quotes[i]);
+		printf("%s|||\n", quotes[i]);
 	}
 	
     printf("\nUnique words in the dictionary:");
@@ -96,14 +96,30 @@ int main(){
         printf("\n%d: %s", i + 1, wordsdic[i]);
     }
     
-	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
-
+	text_to_vector(wordsdic, quotes, wordvectors, wordcount);		//BURADA BÝR SORUN VAR.	I = 0 VE J = 720'DE BÝTÝRÝYOR.
+	
 	for( i=0; i<MAX_QUOTE; i++ ){
     	printf("\n%d. METIN: %s\n%d. METNIN VEKTOR HALI:\n", i+1, quotes[i] ,i+1);
     	for (j = 0; j < wordcount; j++) {
         	printf("%s: %d\n", wordsdic[j], wordvectors[i][j]);
     	}
 	}
+	
+	
+	printf("A");
+	for( i=0; i<MAX_QUOTE; i++ ){
+		free(quotes[i]);
+	}
+	free(quotes);
+	printf("B");
+	for( i=0; i<DICT_SIZE; i++ ){				//FREEING MEMORY.
+		free(wordsdic[i]);
+	}
+	free(wordsdic);
+	for( i=0; i<MAX_QUOTE; i++ ){
+		free(wordsdic[i]);
+	}
+	free(wordsdic);
 	
 	return 0;
 }
@@ -137,8 +153,6 @@ int fill_dictionary(char **dictionary, char **quotes) {
 			}
 			tmp = 0;
         }
-
-        printf("%d. yaziyla birlikte kelime sayisi: %d\n", i + 1, count);
     }
     return count;
 }
@@ -207,9 +221,8 @@ void make_lowercase(char **quotes){
 void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) {
 	int i, j;
 	for( i=0; i<MAX_QUOTE; i++ ){
-		//Eðer sözlükteki karþýlýk gelen kelime metinde var ise vektörün orasýný 1 yap, yoksa 0 yap.
 		for( j=0; j<wordcount; j++ ){
-			if( strstr( quotes[i], dictionary[j] )  ){			//PLAIN GECÝNCE IN'E DE 1 DEDÝ.
+			if( strstr( quotes[i], dictionary[j] )){			//PLAIN GECÝNCE IN'E DE 1 DEDÝ.
 				vectors[i][j] = 1;
 			}
 			else{
