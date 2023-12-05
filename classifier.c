@@ -26,7 +26,7 @@ double dot_product(int *vector, double *parameters, int wordcount);
 double f_x(int *vector, double *parameters, int wordcount);
 void initiate_param(double *parameters, int wordcount);
 
-void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double *gradients, double stepsize, int maxiter, double error);
+void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void stoc_grad_desc();
 void adam();
 
@@ -147,14 +147,22 @@ int main(){
 		labels[i] = 1;
 	}
 	
+		
+	/*
+	for(i=0;i<wordcount;i++) {
+		printf("%d.parametre = %f\n",i,parameters[i]);
+	}
+	*/
 	
 	
-	stoc_grad_desc(wordvectors, parameters, wordcount, labels, gradients, 0.01, 10000, 0.01);
+	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, gradients, 0.01, 10000, 0.01);
+	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 100, 0.01);
 	
 	
 	
-	
-	
+	for(i=0;i<5;i++) {
+		printf("%d.parametre = %f\n",i,parameters[i]);
+	}
 	
 	
 	
@@ -178,53 +186,42 @@ int main(){
 	return 0;
 }
 
-void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double *gradients, double stepsize, int maxiter, double error){
-	int i=0, t, z, stop = 1, detect = 1;
-	double y_hat_std, y_std, gradient, total_loss;					//YAPAMAZSAN NONLINEAR REGRESSION DENE.			(JACOBIAN ILE)
-	while( i<maxiter && detect ){
-		
-		for( t=0; t<wordcount; t++ ){
-			gradient = 0;
-			
-			for( z=0; z<MAX_QUOTE; z++ ){
-				
-				y_std = (labels[z]+1) / 2;
-				y_hat_std = ( f_x(vectors[z], parameters, wordcount)+1 ) / 2;
-				
-				gradient = ( y_hat_std - y_std ) * vectors[z][t] ;
-				
-			}
-			gradient /= MAX_QUOTE;
-			parameters[t] -= stepsize*gradient;					//asd stands for gradients.
-			
-			
-			
-		}
-		
-		total_loss = 0;
-		for( t=0; t<MAX_QUOTE; t++ ){
-			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
-		}
-		total_loss /= MAX_QUOTE;
-		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
-		
-		/*y_hat = (labels[i]+1) / 2;
-		y_predicted = ;
-		
-		for( j=0; j<wordcount; j++ ){
-			parameters[j] -= stepsize*gradients[j];				//Hareket et.
-		}
-		
-		j=0;  detect = 1;
-		while( j++<wordcount && detect ){					//Eðer bütün boyutlarda hareket miktarý hatadan küçükse çýk.
-			if( stepsize*gradients[j] > error )		detect = 0;
-		}
-		if( detect ) 	stop = 0;
-		*/
-		i++;
-	}
-	printf("STOP = %d", stop);
-	
+void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error) {
+    int i, t, z;
+    double y_hat_std, y_std, gradient, total_loss;
+
+    for (i = 0; i < maxiter; i++) {
+        total_loss = 0;
+
+        // Compute gradients and update parameters for each dimension
+        for (t = 0; t < wordcount; t++) {
+            gradient = 0;
+
+            for (z = 0; z < MAX_QUOTE; z++) {
+                y_std = (labels[z] + 1) / 2;
+                y_hat_std = (f_x(vectors[z], parameters, wordcount) + 1) / 2;
+
+                gradient += (y_hat_std - y_std) * vectors[z][t];
+            }
+
+            gradient /= MAX_QUOTE; // Average the gradient
+            parameters[t] -= stepsize * gradient; // Update the parameter
+        }
+
+        // Compute total loss
+        for (t = 0; t < MAX_QUOTE; t++) {
+            total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
+        }
+        total_loss /= MAX_QUOTE;
+
+        printf("Iteration %d: Loss: %lf\n", i + 1, total_loss);
+
+        // You can add a convergence criterion here if needed
+        if (total_loss < error) {
+            printf("Converged after %d iterations.\n", i + 1);
+            break;
+        }
+    }
 }
 
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double *gradients, double stepsize, int maxiter, double error){
@@ -240,7 +237,7 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 		for( j=0; j<wordcount; j++ ){
 			
 			gradient = ( y_hat_std - y_std ) * vectors[chosen][j];
-			parameters[chosen] -= stepsize*gradient;
+			parameters[j] -= stepsize*gradient;
 			
 			//printf("\n chosen = %d	j = %d  stepsize = %lf	gradient = %lf	st*gr = %lf		error = %lf	detect = %d", chosen, j, stepsize, gradient, stepsize*gradient, error, detect);
 			if( stepsize*gradient > error ){
@@ -253,7 +250,7 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
 		}
 		total_loss /= MAX_QUOTE;
-		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
+		//printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
 		
 		if( detect ){
 			stop = 1;
@@ -322,9 +319,13 @@ void initiate_param(double *parameters, int wordcount){				//TODO: BU SADECE INT
 	srand(time(NULL));
 	for( i=0; i<wordcount; i++ ){
 		random_value = (double)rand()/RAND_MAX*2.0-1.0;
-		random_value *= 5;				//float in range -1 to 1
+		random_value *= 10;				//float in range -1 to 1
 		parameters[i] = 0.0;
 	}
+	for( i=0; i<wordcount; i++ ){
+		printf("%d.parametre = [%f]\n",i,parameters[i]);
+	}
+	
 }
 
 int fill_dictionary(char **dictionary, char **quotes) {
