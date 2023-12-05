@@ -148,8 +148,8 @@ int main(){
 	*/
 	
 	
-	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, gradients, 0.01, 10000, 0.01);
-	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 200, 1.0);
+	stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.01);
+	//gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 200, 1.0);
 	
 	
 	
@@ -174,8 +174,8 @@ int main(){
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error) {
     int i=0, t, z;
-    double y_hat_std, y_std, gradient, total_loss, last_loss;
-	total_loss = 0;
+    double y_hat_std, y_std, gradient, total_loss=0, last_loss;
+	
 	do{
 		last_loss = total_loss;
 		total_loss = 0;
@@ -198,52 +198,53 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
         }
         total_loss /= MAX_QUOTE;
 
-        printf("Iteration %d: Loss: %lf   last_loss = %lf   parameters[0] = %lf\n", i + 1, total_loss, last_loss, parameters[0]);
+        printf("Iteration %d: Loss: %lf\n", i + 1, total_loss);
 		
 		i++;
 	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
+	
+	if( i < maxiter ){
+		printf("\nModel succesfully converged at %d. iteration.", i);
+	}
+	else{
+		printf("\nModel training lasted for a full %d iterations.", maxiter);
+	}
 
 }
 
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error){
-	int i=0, t, z, stop = 1, detect = 1, chosen, j;
-	double y_hat_std, y_std, gradient, total_loss;
+	int i=0, t, z, chosen, j;
+	double y_hat_std, y_std, gradient, total_loss=0, last_loss;
 	srand(time(NULL));
-	while( i<maxiter && stop ){
+	
+	do{
+		last_loss = total_loss;
+		total_loss = 0;
+		
 		chosen = rand()%MAX_QUOTE;
 		y_std = (labels[chosen]+1) / 2;
 		y_hat_std = ( f_x(vectors[chosen], parameters, wordcount)+1 ) / 2;
 		gradient = 0;
-		detect = 1;				//detect 1 yapylyr. De?i?im miktary hatadan büyük olan tek bir örnek varsa detect 0 olur. Böylece tüm boyutlarda hatanyn altyna inilene dek programda kalynyr.
+		
 		for( j=0; j<wordcount; j++ ){
-			
 			gradient = ( y_hat_std - y_std ) * vectors[chosen][j];
 			parameters[j] -= stepsize*gradient;
-			
-			//printf("\n chosen = %d	j = %d  stepsize = %lf	gradient = %lf	st*gr = %lf		error = %lf	detect = %d", chosen, j, stepsize, gradient, stepsize*gradient, error, detect);
-			if( stepsize*gradient > error ){
-				detect = 0;
-			}
-			
 		}
+		
 		total_loss = 0;
 		for( t=0; t<MAX_QUOTE; t++ ){
 			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
 		}
 		total_loss /= MAX_QUOTE;
-		//printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
-		
-		if( detect ){
-			stop = 1;
-		}
-		
-		
-		
-		
-		
-		
-		
+		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
 		i++;
+	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
+	
+	if( i < maxiter ){
+		printf("\nModel succesfully converged at %d. iteration.", i);
+	}
+	else{
+		printf("\nModel training lasted for a full %d iterations.", maxiter);
 	}
 	
 }
