@@ -27,7 +27,7 @@ double f_x(int *vector, double *parameters, int wordcount);
 void initiate_param(double *parameters, int wordcount);
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
-void stoc_grad_desc();
+void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void adam();
 
 void compute_gradient(int **vectors, double *parameters, int wordcount, int *labels, double *gradients);
@@ -45,7 +45,7 @@ int main(){
 
 	char **quotes, **wordsdic;
 	int **wordvectors, *labels;			//qoutes[i]'s label is labels[i]. (either 1 or -1)
-	double *parameters, *gradients;
+	double *parameters;
 	
 
 	quotes = (char**) malloc(MAX_QUOTE*sizeof(char*));				//Allocating memory for quotes, dictionary and vectors.
@@ -94,16 +94,16 @@ int main(){
 	make_lowercase(quotes);
 	organize_add(quotes);
 	
-	printf("-------------------PUNCTUATION REMOVED--------------------------\n\n");
+	/*printf("-------------------PUNCTUATION REMOVED--------------------------\n\n");
 	for( i=0; i<MAX_QUOTE; i++ ){
 		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
 		printf("len = %d\n", strlen(quotes[i]));
 		printf("%s\n", quotes[i]);
-	}
+	}*/
 	
 	int wordcount = fill_dictionary(wordsdic, quotes); 
 	
-	
+	/*
 	printf("\n-------------------DICTIONARY FORMED--------------------------\n\n");
 	printf("wordcount = %d\n", wordcount);
 	
@@ -116,7 +116,7 @@ int main(){
     printf("\nUnique words in the dictionary:");
     for (i = 0; i < wordcount; i++) {
         printf("\n%d: %s", i + 1, wordsdic[i]);
-    }
+    }*/
     
 	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
 	
@@ -135,14 +135,7 @@ int main(){
 		return 1;
 	}
 	initiate_param(parameters, wordcount);
-	gradients = (double*) malloc(wordcount*sizeof(double));
-	if( gradients == NULL ){
-		printf("Memory allocation failed. Exiting."); 
-		return 1;
-	}
-	for( i=0; i<wordcount; i++ ){
-		gradients[i] = 0;
-	}
+
 	for( i=0; i<MAX_QUOTE; i++ ){
 		labels[i] = 1;
 	}
@@ -156,14 +149,7 @@ int main(){
 	
 	
 	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, gradients, 0.01, 10000, 0.01);
-	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 100, 0.01);
-	
-	
-	
-	for(i=0;i<5;i++) {
-		printf("%d.parametre = %f\n",i,parameters[i]);
-	}
-	
+	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 200, 1.0);
 	
 	
 	
@@ -187,13 +173,12 @@ int main(){
 }
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error) {
-    int i, t, z;
-    double y_hat_std, y_std, gradient, total_loss;
-
-    for (i = 0; i < maxiter; i++) {
-        total_loss = 0;
-
-        // Compute gradients and update parameters for each dimension
+    int i=0, t, z;
+    double y_hat_std, y_std, gradient, total_loss, last_loss;
+	total_loss = 0;
+	do{
+		last_loss = total_loss;
+		total_loss = 0;
         for (t = 0; t < wordcount; t++) {
             gradient = 0;
 
@@ -204,27 +189,23 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
                 gradient += (y_hat_std - y_std) * vectors[z][t];
             }
 
-            gradient /= MAX_QUOTE; // Average the gradient
-            parameters[t] -= stepsize * gradient; // Update the parameter
+            gradient /= MAX_QUOTE;
+            parameters[t] -= stepsize * gradient;
         }
 
-        // Compute total loss
         for (t = 0; t < MAX_QUOTE; t++) {
             total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
         }
         total_loss /= MAX_QUOTE;
 
-        printf("Iteration %d: Loss: %lf\n", i + 1, total_loss);
+        printf("Iteration %d: Loss: %lf   last_loss = %lf   parameters[0] = %lf\n", i + 1, total_loss, last_loss, parameters[0]);
+		
+		i++;
+	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
 
-        // You can add a convergence criterion here if needed
-        if (total_loss < error) {
-            printf("Converged after %d iterations.\n", i + 1);
-            break;
-        }
-    }
 }
 
-void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double *gradients, double stepsize, int maxiter, double error){
+void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error){
 	int i=0, t, z, stop = 1, detect = 1, chosen, j;
 	double y_hat_std, y_std, gradient, total_loss;
 	srand(time(NULL));
@@ -233,7 +214,7 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 		y_std = (labels[chosen]+1) / 2;
 		y_hat_std = ( f_x(vectors[chosen], parameters, wordcount)+1 ) / 2;
 		gradient = 0;
-		detect = 1;				//detect 1 yapýlýr. Deðiþim miktarý hatadan büyük olan tek bir örnek varsa detect 0 olur. Böylece tüm boyutlarda hatanýn altýna inilene dek programda kalýnýr.
+		detect = 1;				//detect 1 yapylyr. De?i?im miktary hatadan büyük olan tek bir örnek varsa detect 0 olur. Böylece tüm boyutlarda hatanyn altyna inilene dek programda kalynyr.
 		for( j=0; j<wordcount; j++ ){
 			
 			gradient = ( y_hat_std - y_std ) * vectors[chosen][j];
@@ -308,7 +289,7 @@ double dot_product(int *vector, double *parameters, int wordcount){
 	return result;
 }
 
-double f_x(int *vector, double *parameters, int wordcount){			//Sýgmoid function.
+double f_x(int *vector, double *parameters, int wordcount){			//Sygmoid function.
 	double dot = dot_product(vector, parameters, wordcount);
 	return tanh(dot);
 }
@@ -322,10 +303,6 @@ void initiate_param(double *parameters, int wordcount){				//TODO: BU SADECE INT
 		random_value *= 10;				//float in range -1 to 1
 		parameters[i] = 0.0;
 	}
-	for( i=0; i<wordcount; i++ ){
-		printf("%d.parametre = [%f]\n",i,parameters[i]);
-	}
-	
 }
 
 int fill_dictionary(char **dictionary, char **quotes) {
@@ -384,7 +361,7 @@ int compute_number_of_words(char *text){		//HOW CAN WE?
 }
 
 void remove_punctuation(char *text){
-	const char *punctuations = "!()-[]{};:“”,<>./?@#$%^&*\"_~—-";
+	const char *punctuations = "!()-[]{};:??,<>./?@#$%^&*\"_~?-";
 	int i=0, len = strlen(text);
 	while( i<len && text[i] != '\0' ){
 		if( strchr(punctuations, text[i]) ){
@@ -426,7 +403,7 @@ void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcou
 	int i, j;
 	for( i=0; i<MAX_QUOTE; i++ ){
 		for( j=0; j<wordcount; j++ ){
-			if( strstr( quotes[i], dictionary[j] )){			//PLAIN GECÝNCE IN'E DE 1 DEDÝ.
+			if( strstr( quotes[i], dictionary[j] )){			//PLAIN GECYNCE IN'E DE 1 DEDY.
 				vectors[i][j] = 1;
 			}
 			else{
@@ -437,7 +414,7 @@ void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcou
 }
 
 
-void slide_text(char *text, int tlen, int start, int step, int direction){	//1 ise sola doðru kapa, 0 ise saða doðru aç.
+void slide_text(char *text, int tlen, int start, int step, int direction){	//1 ise sola do?ru kapa, 0 ise sa?a do?ru aç.
 	int i, end = strlen(text);	
 	if( direction == 1 ){
 		for( i=start; i<end; i++ ){
@@ -459,7 +436,7 @@ void organize_add(char **quotes){
 		len = strlen(quotes[i]);
 		j=0;
 		while( j<len && quotes[i][j] != '\0' ){
-			if( quotes[i][j] == '\'' ){			//KESME ÝSARETÝ BULDUK. 'VE YA DA N'T MI DÝYE BAK.
+			if( quotes[i][j] == '\'' ){			//KESME YSARETY BULDUK. 'VE YA DA N'T MI DYYE BAK.
 				if( quotes[i][j-1] == 'n' && quotes[i][j+1] == 't' ){		//NOT
 					slide_text(quotes[i], strlen(quotes[i]), j, 1, 0);
 					quotes[i][j-1] = ' '; quotes[i][j] = 'n'; quotes[i][j+1] = 'o'; quotes[i][j+2] = 't'; quotes[i][j+3] = ' ';
