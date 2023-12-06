@@ -8,8 +8,11 @@
 #define MAX_LENGTH 511
 #define MAX_QUOTE 100
 #define DICT_SIZE 2500
+#define TRAIN_PERC 0.8
 
-//TODO: 1 means Hayyam, -1 means Shakespeare.
+//1 means Hayyam, -1 means Shakespeare.
+
+//TODO: ADAM'I BÝTÝR. ÝKÝ SINIFI DA ALARAK DENEME YAP. SONRA GÖRSELLEÞTÝR.
 
 int compute_number_of_words(char *text);
 void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) ;
@@ -23,15 +26,18 @@ void make_lowercase(char **quotes);
 void organize_add(char **quotes);
 
 double dot_product(int *vector, double *parameters, int wordcount);
-double f_x(int *vector, double *parameters, int wordcount);
+double compute_func(int *vector, double *parameters, int wordcount);
 void initiate_param(double *parameters, int wordcount);
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
-void adam();
+void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2);
 
-void compute_gradient(int **vectors, double *parameters, int wordcount, int *labels, double *gradients);
 double compute_loss(int *vector, double *parameters, int wordcount, int *labels);
+
+void gradesc_test(char **texts, int **vectors, double *parameters, int wordcount);		//test için --> metinler gelecek. vektöre çevrilecek. sonra o vektörlerden çýktý alýnacak.
+void stc_grad_test();
+void adam_test(char **texts, int **vectors, double *parameters);
 
 int main(){
 	int i=0, j;
@@ -147,12 +153,11 @@ int main(){
 	}
 	*/
 	
+	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.1, 200, 0.01);
+	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.0001);
+	//adam(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.0001, 0.9, 0.99);
 	
-	stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.01);
-	//gradiend_descent(wordvectors, parameters, wordcount, labels,  0.01, 200, 1.0);
-	
-	
-	
+	gradesc_test(quotes, wordvectors, parameters, wordcount);
 	
 	
 	
@@ -182,9 +187,9 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
         for (t = 0; t < wordcount; t++) {
             gradient = 0;
 
-            for (z = 0; z < MAX_QUOTE; z++) {
+            for (z = 0; z < MAX_QUOTE*TRAIN_PERC; z++) {
                 y_std = (labels[z] + 1) / 2;
-                y_hat_std = (f_x(vectors[z], parameters, wordcount) + 1) / 2;
+                y_hat_std = (compute_func(vectors[z], parameters, wordcount) + 1) / 2;
 
                 gradient += (y_hat_std - y_std) * vectors[z][t];
             }
@@ -193,7 +198,7 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
             parameters[t] -= stepsize * gradient;
         }
 
-        for (t = 0; t < MAX_QUOTE; t++) {
+        for (t = 0; t < MAX_QUOTE*TRAIN_PERC; t++) {
             total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
         }
         total_loss /= MAX_QUOTE;
@@ -221,10 +226,9 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 		last_loss = total_loss;
 		total_loss = 0;
 		
-		chosen = rand()%MAX_QUOTE;
+		chosen = rand()%MAX_QUOTE*TRAIN_PERC;
 		y_std = (labels[chosen]+1) / 2;
-		y_hat_std = ( f_x(vectors[chosen], parameters, wordcount)+1 ) / 2;
-		gradient = 0;
+		y_hat_std = ( compute_func(vectors[chosen], parameters, wordcount)+1 ) / 2;
 		
 		for( j=0; j<wordcount; j++ ){
 			gradient = ( y_hat_std - y_std ) * vectors[chosen][j];
@@ -232,10 +236,10 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 		}
 		
 		total_loss = 0;
-		for( t=0; t<MAX_QUOTE; t++ ){
+		for( t=0; t<MAX_QUOTE*TRAIN_PERC; t++ ){
 			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
 		}
-		total_loss /= MAX_QUOTE;
+		total_loss /= MAX_QUOTE*TRAIN_PERC;
 		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
 		i++;
 	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
@@ -249,26 +253,27 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 	
 }
 
-
-
-
-
-void compute_gradient(int **vectors, double *parameters, int wordcount, int *labels, double *gradients){				//COMPUTES GRADIENT FOR ONE DIMENSION
+void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2){
 	int i, j;
-	double f, err;
-	for( i=0; i<MAX_QUOTE; i++ ){
-		f = f_x( vectors[i], parameters, wordcount );
-		err = f - labels[i];
-		for( j=0; j<wordcount; j++ ){
-			gradients[j] += err * vectors[i][j];
-		}
-		gradients[i] /= MAX_QUOTE;
+	
+}
+
+void gradesc_test(char **texts, int **vectors, double *parameters, int wordcount){		//ÇIKTIYA HEP 0.00000 VERÝYOR. NEDEN?
+	int i, j;
+	double prediction, prediction_std;
+	for( j=0; j<wordcount; j++ ){
+		printf("\nparameters[%d] = [ %lf ]", j, parameters[j]);
+	}
+	for( i=MAX_QUOTE*TRAIN_PERC; i<MAX_QUOTE; i++ ){
+		prediction = compute_func(vectors[i], parameters, wordcount);
+		//prediction_std = (prediction-1)/2;
+		printf("\nPrediction for %d. text: %lf", i+1, prediction);
 	}
 }
 
 double compute_loss(int *vector, double *parameters, int wordcount, int *labels){		//TEK BIR ORNEK IÇIN HATA HESAPLAR.
 	int i;
-	double loss = 0, fx = f_x(vector, parameters, wordcount);
+	double loss = 0, fx = compute_func(vector, parameters, wordcount);
 	double fx_std = (fx+1.0) / 2.0;
 	
 	if( fx_std == 0 ) fx_std += 0.00001;
@@ -290,7 +295,7 @@ double dot_product(int *vector, double *parameters, int wordcount){
 	return result;
 }
 
-double f_x(int *vector, double *parameters, int wordcount){			//Sygmoid function.
+double compute_func(int *vector, double *parameters, int wordcount){			//Sygmoid function.
 	double dot = dot_product(vector, parameters, wordcount);
 	return tanh(dot);
 }
