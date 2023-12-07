@@ -6,13 +6,13 @@
 #include <ctype.h>		//used only to make text lowercase
 
 #define MAX_LENGTH 511
-#define MAX_QUOTE 100
+#define MAX_QUOTE 200
 #define DICT_SIZE 2500
 #define TRAIN_PERC 0.8
 
 //1 means Hayyam, -1 means Shakespeare.
 
-//TODO: ADAM'I BÝTÝR. ÝKÝ SINIFI DA ALARAK DENEME YAP. SONRA GÖRSELLEÞTÝR.
+//TODO: ADAM'I BÝTÝR. GÖRSELLEÞTÝR.
 
 int compute_number_of_words(char *text);
 void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) ;
@@ -27,7 +27,8 @@ void organize_add(char **quotes);
 
 double dot_product(int *vector, double *parameters, int wordcount);
 double compute_func(int *vector, double *parameters, int wordcount);
-void initiate_param(double *parameters, int wordcount);
+void initiate_param(double *parameters, int wordcount, double param);
+void initiate_labels(int *labels);
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
@@ -35,15 +36,14 @@ void adam(int **vectors, double *parameters, int wordcount, int *labels, double 
 
 double compute_loss(int *vector, double *parameters, int wordcount, int *labels);
 
-void gradesc_test(char **texts, int **vectors, double *parameters, int wordcount);		//test için --> metinler gelecek. vektöre çevrilecek. sonra o vektörlerden çýktý alýnacak.
-void stc_grad_test();
-void adam_test(char **texts, int **vectors, double *parameters);
+void test_accuracy(char **texts, int **vectors, double *parameters, int *labels, int wordcount);
+
 
 int main(){
 	int i=0, j;
 	FILE *fptr;
 	
-	fptr = fopen("hayyam.txt", "r");
+	fptr = fopen("datas.txt", "r");
 	if( fptr == NULL ){
 		printf("File couldn't be opened. Exiting.");
 		return 1;
@@ -100,64 +100,33 @@ int main(){
 	make_lowercase(quotes);
 	organize_add(quotes);
 	
-	/*printf("-------------------PUNCTUATION REMOVED--------------------------\n\n");
-	for( i=0; i<MAX_QUOTE; i++ ){
-		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
-		printf("len = %d\n", strlen(quotes[i]));
-		printf("%s\n", quotes[i]);
-	}*/
-	
 	int wordcount = fill_dictionary(wordsdic, quotes); 
 	
-	/*
-	printf("\n-------------------DICTIONARY FORMED--------------------------\n\n");
-	printf("wordcount = %d\n", wordcount);
+
 	
-	for( i=0; i<MAX_QUOTE; i++ ){
-		printf("\ncount test --> %d\n", compute_number_of_words(quotes[i]));
-		printf("len = %d\n", strlen(quotes[i]));
-		printf("%s|||\n", quotes[i]);
-	}
-	
-    printf("\nUnique words in the dictionary:");
+    printf("\nUnique words in the dictionary:\n");
     for (i = 0; i < wordcount; i++) {
-        printf("\n%d: %s", i + 1, wordsdic[i]);
-    }*/
+        printf("%d: %s\n", i + 1, wordsdic[i]);
+    }
     
 	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
-	
-	/*for( i=0; i<MAX_QUOTE; i++ ){
-    	printf("\n%d. METIN: %s\n%d. METNIN VEKTOR HALI:\n", i+1, quotes[i] ,i+1);
-    	for (j = 0; j < wordcount; j++) {
-        	printf("%s: %d\n", wordsdic[j], wordvectors[i][j]);
-    	}
-	}*/
-	
-	
 	
 	parameters = (double*) malloc(wordcount*sizeof(double));
 	if( parameters == NULL ){
 		printf("Memory allocation failed. Exiting."); 
 		return 1;
 	}
-	initiate_param(parameters, wordcount);
+	initiate_param(parameters, wordcount, 0.0);		
+	initiate_labels(labels);
+	
 
-	for( i=0; i<MAX_QUOTE; i++ ){
-		labels[i] = 1;
-	}
 	
-		
-	/*
-	for(i=0;i<wordcount;i++) {
-		printf("%d.parametre = %f\n",i,parameters[i]);
-	}
-	*/
 	
-	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.1, 200, 0.01);
-	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.0001);
-	//adam(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.0001, 0.9, 0.99);
+	//gradiend_descent(wordvectors, parameters, wordcount, labels,  0.05, 200, 0.001);			//0, 0.1, 0.3
+	stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.00001);
+	//adam(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.0001, 0.9, 0.999);
 	
-	gradesc_test(quotes, wordvectors, parameters, wordcount);
+	test_accuracy(quotes, wordvectors, parameters, labels, wordcount);
 	
 	
 	
@@ -178,16 +147,17 @@ int main(){
 }
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error) {
-    int i=0, t, z;
-    double y_hat_std, y_std, gradient, total_loss=0, last_loss;
-	
-	do{
-		last_loss = total_loss;
-		total_loss = 0;
+    int i = 0, t, z;
+    double y_hat_std, y_std, gradient, total_loss = 0, last_loss;
+
+    do {
+        last_loss = total_loss;
+        total_loss = 0;
+
         for (t = 0; t < wordcount; t++) {
             gradient = 0;
 
-            for (z = 0; z < MAX_QUOTE*TRAIN_PERC; z++) {
+            for (z = 0; z < MAX_QUOTE * TRAIN_PERC; z++) {
                 y_std = (labels[z] + 1) / 2;
                 y_hat_std = (compute_func(vectors[z], parameters, wordcount) + 1) / 2;
 
@@ -198,23 +168,21 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
             parameters[t] -= stepsize * gradient;
         }
 
-        for (t = 0; t < MAX_QUOTE*TRAIN_PERC; t++) {
+        for (t = 0; t < MAX_QUOTE * TRAIN_PERC; t++) {
             total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
         }
         total_loss /= MAX_QUOTE;
 
         printf("Iteration %d: Loss: %lf\n", i + 1, total_loss);
-		
-		i++;
-	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
-	
-	if( i < maxiter ){
-		printf("\nModel succesfully converged at %d. iteration.", i);
-	}
-	else{
-		printf("\nModel training lasted for a full %d iterations.", maxiter);
-	}
 
+        i++;
+    } while ((fabs(total_loss - last_loss) > error || i == 1) && i < maxiter);
+
+    if (i < maxiter) {
+        printf("\nModel successfully converged at %d. iteration.", i);
+    } else {
+        printf("\nModel training lasted for a full %d iterations.", maxiter);
+    }
 }
 
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error){
@@ -241,7 +209,7 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 		}
 		total_loss /= MAX_QUOTE*TRAIN_PERC;
 		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
-		i++;
+		stepsize *=	0.975;	i++;
 	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
 	
 	if( i < maxiter ){
@@ -254,36 +222,76 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 }
 
 void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2){
-	int i, j;
+	int i, j, k;
+	double *gradients, total_loss=0, last_loss, m, v, m_hat, v_hat;
+	gradients = (double*) malloc(wordcount*sizeof(double));
+	if( gradients == NULL ){
+		printf("\nMemory allocation failed. Exiting.");
+		exit(1);
+	}
+	for( i=0; i<wordcount; i++ ){
+		gradients[i] = 0;
+	}
+	
+	
+	m=0;   v=0;   i=0;
+	do{
+		last_loss = total_loss;
+		total_loss = 0;
+		
+		for( j=0; j<wordcount; j++ ){
+			
+			for( k=0; k<MAX_QUOTE*TRAIN_PERC; k++ ){
+				
+			}
+			
+			
+			
+		}
+		
+		
+		
+		
+		
+		
+		
+		i++;
+	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
 	
 }
 
-void gradesc_test(char **texts, int **vectors, double *parameters, int wordcount){		//ÇIKTIYA HEP 0.00000 VERÝYOR. NEDEN?
+void test_accuracy(char **texts, int **vectors, double *parameters, int *labels, int wordcount){
 	int i, j;
-	double prediction, prediction_std;
-	for( j=0; j<wordcount; j++ ){
+	double prediction, prediction_std, accuracy=0;
+	/*for( j=0; j<wordcount; j++ ){
 		printf("\nparameters[%d] = [ %lf ]", j, parameters[j]);
-	}
+	}*/
 	for( i=MAX_QUOTE*TRAIN_PERC; i<MAX_QUOTE; i++ ){
 		prediction = compute_func(vectors[i], parameters, wordcount);
 		//prediction_std = (prediction-1)/2;
 		printf("\nPrediction for %d. text: %lf", i+1, prediction);
+		if( fabs( 1.0*labels[i] - prediction ) < 1 ){
+			accuracy++;
+		}
 	}
+	accuracy /= MAX_QUOTE*(1-TRAIN_PERC);
+	printf("\nTotal accuracy of the model is: %.2lf percent", accuracy*100);
+	
 }
 
 double compute_loss(int *vector, double *parameters, int wordcount, int *labels){		//TEK BIR ORNEK IÇIN HATA HESAPLAR.
 	int i;
-	double loss = 0, fx = compute_func(vector, parameters, wordcount);
+	double loss, fx = compute_func(vector, parameters, wordcount);
 	double fx_std = (fx+1.0) / 2.0;
 	
 	if( fx_std == 0 ) fx_std += 0.00001;
 	if( fx_std == 1 ) fx_std -= 0.00001;
 	for( i=0; i<MAX_QUOTE; i++ ){
 		//printf("\n1: %d		2: %lf		3: %lf", labels[i], log (sigm), log( 1-sigm ));
-		loss += labels[i]*log (fx_std) + ( 1-labels[i] )*log( 1-fx_std );
+		loss = - labels[i]*log (fx_std) - ( 1-labels[i] )*log( 1-fx_std );
 		//printf("\ni = %d	loss = %lf", i, loss);
 	}
-	return -loss;
+	return loss;
 }
 
 double dot_product(int *vector, double *parameters, int wordcount){
@@ -300,14 +308,28 @@ double compute_func(int *vector, double *parameters, int wordcount){			//Sygmoid
 	return tanh(dot);
 }
 
-void initiate_param(double *parameters, int wordcount){				//TODO: BU SADECE INT YAPIYOR. DOUBLE YAPMANIN YOLUNU BUL
+void initiate_param(double *parameters, int wordcount, double value){				//TODO: BU SADECE INT YAPIYOR. DOUBLE YAPMANIN YOLUNU BUL
 	int i;
 	double random_value;
 	srand(time(NULL));
 	for( i=0; i<wordcount; i++ ){
-		random_value = (double)rand()/RAND_MAX*2.0-1.0;
-		random_value *= 10;				//float in range -1 to 1
-		parameters[i] = 0.0;
+		parameters[i] = value;
+	}
+}
+
+void initiate_labels(int *labels){
+	int i;
+	for( i=0; i<MAX_QUOTE/2*TRAIN_PERC; i++ ){
+		labels[i] = 1;
+	}
+	for( i=MAX_QUOTE/2*TRAIN_PERC; i<MAX_QUOTE*TRAIN_PERC; i++ ){
+		labels[i] = 0;
+	}
+	for( i=MAX_QUOTE*TRAIN_PERC; i< MAX_QUOTE-MAX_QUOTE*(1-TRAIN_PERC)/2; i++ ){
+		labels[i] = 1;
+	}
+	for( i=MAX_QUOTE-MAX_QUOTE*(1-TRAIN_PERC)/2; i<MAX_QUOTE; i++ ){
+		labels[i] = 0;
 	}
 }
 
