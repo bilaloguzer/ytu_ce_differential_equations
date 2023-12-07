@@ -30,7 +30,7 @@ double compute_func(int *vector, double *parameters, int wordcount);
 void initiate_param(double *parameters, int wordcount, double param);
 void initiate_labels(int *labels);
 
-void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, char **quotes);
+void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, char **quotes, FILE *file);
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2, double epsilon);
 
@@ -116,14 +116,29 @@ int main(){
 	if( parameters == NULL ){
 		printf("Memory allocation failed. Exiting."); 
 		return 1;
-	}
-	initiate_param(parameters, wordcount, 0.2);		
+	}	
 	initiate_labels(labels);
 	
+	char filename_format[] = "gd_results_parameters_%d.txt";
+	char filename[sizeof(filename_format) + 3];  // for up to 4 digit numbers
+	int k;
+	for (k = 0; k < 5; k++) {
+		initiate_param(parameters, wordcount, 0.0+k*0.05);
+	    snprintf(filename, sizeof(filename), filename_format, k); // Use 'k' here instead of 'i'
+	    FILE *fr = fopen(filename, "w");
+		
+	    if (!fr)
+	        break;
+	    gradiend_descent(wordvectors, parameters, wordcount, labels,  0.075, 200, 0.001, quotes, fr);	
+	    for ( i = 0; i < wordcount; i++) {
+	        fprintf(fr, "%f ", parameters[i]); // Assuming 'parameters' are doubles
+	    }
+		
+	    fclose(fr);
+	}
 	
 	
-	
-	gradiend_descent(wordvectors, parameters, wordcount, labels,  0.075, 200, 0.0001, quotes);			//0, 0.1, 0.3
+	//gradiend_descent(wordvectors, parameters, wordcount, labels,  0.075, 200, 0.001, quotes);			//0, 0.1, 0.3
 	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.00001);
 	//adam(wordvectors, parameters, wordcount, labels, 0.01, 50, 0.0001, 0.9, 0.999, 0.01);
 	
@@ -147,13 +162,13 @@ int main(){
 	return 0;
 }
 
-void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, char **quotes) {
+void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, char **quotes, FILE *file) {
     int i = 0, t, z;
     double y_hat_std, y_std, gradient, total_loss = 0, last_loss, test_acc, train_acc;
     FILE *fptr;
 	//fptr = fopen("gd_results.csv", "w");
 	//fprintf(fptr, "Epoch\tTime(seconds)\tLoss\tTrainingAccuracy\tTestAccuracy");
-
+	time_t t0, times[100];
 	printf("Using Gradient Descent to update parameters.\n");
     do {
         last_loss = total_loss;
@@ -168,10 +183,12 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
 
                 gradient += (y_hat_std - y_std) * vectors[z][t];
             }
-
+		
             gradient /= MAX_QUOTE*TRAIN_PERC;
             parameters[t] -= stepsize * gradient;
+            fprintf(file, "%f ", parameters[t]);
         }
+        fprintf(file, "\n");
 
         for (t = 0; t < MAX_QUOTE * TRAIN_PERC; t++) {
             total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
@@ -183,7 +200,7 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
         if( (i+1) % 10 == 0 ){		//TEST FALAN FÝLAN YAP.
         	train_acc = train_accuracy(quotes, vectors, parameters, labels, wordcount);
 			test_acc = test_accuracy(quotes, vectors, parameters, labels, wordcount);
-			printf("\nTraining set accuracy: %lf      Test set accuracy: %lf      Loss: %lf\n", train_acc, test_acc, total_loss);
+			printf("\nTraining set accuracy: %lf      Test set accuracy: %lf      Loss: %lf    Time: %d\n", train_acc, test_acc, total_loss, 0);
 			//fprintf(fptr, "%d ", i+1,);
 		}
 
@@ -191,9 +208,9 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
     } while ((fabs(total_loss - last_loss) > error || i == 1) && i < maxiter);
 
     if (i < maxiter) {
-        printf("\nModel successfully converged at %d. iteration.", i);
+        printf("\nModel successfully converged at %d. iteration.\n", i);
     } else {
-        printf("\nModel training lasted for a full %d iterations.", maxiter);
+        printf("\nModel training lasted for a full %d iterations.\n", maxiter);
     }
     test_accuracy(quotes, vectors, parameters, labels, wordcount);
 }
