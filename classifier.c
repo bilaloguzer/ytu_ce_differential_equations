@@ -12,7 +12,7 @@
 
 //1 means Hayyam, -1 means Shakespeare.
 
-//TODO: ADAM'I BÝTÝR. GÖRSELLEÞTÝR.
+//TODO: ADAM'I BÝTÝR. ÝKÝ SINIFI DA ALARAK DENEME YAP. SONRA GÖRSELLEÞTÝR.
 
 int compute_number_of_words(char *text);
 void text_to_vector(char **dictionary, char **quotes, int **vectors, int wordcount) ;
@@ -32,7 +32,7 @@ void initiate_labels(int *labels);
 
 void gradiend_descent(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
 void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error);
-void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2);
+void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2, double epsilon);
 
 double compute_loss(int *vector, double *parameters, int wordcount, int *labels);
 
@@ -104,10 +104,10 @@ int main(){
 	
 
 	
-    printf("\nUnique words in the dictionary:\n");
+    /*printf("\nUnique words in the dictionary:\n");
     for (i = 0; i < wordcount; i++) {
         printf("%d: %s\n", i + 1, wordsdic[i]);
-    }
+    }*/
     
 	text_to_vector(wordsdic, quotes, wordvectors, wordcount);
 	
@@ -123,8 +123,8 @@ int main(){
 	
 	
 	//gradiend_descent(wordvectors, parameters, wordcount, labels,  0.05, 200, 0.001);			//0, 0.1, 0.3
-	stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.00001);
-	//adam(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.0001, 0.9, 0.999);
+	//stoc_grad_desc(wordvectors, parameters, wordcount, labels, 0.1, 1000, 0.00001);
+	adam(wordvectors, parameters, wordcount, labels, 0.01, 1000, 0.0001, 0.9, 0.999, 0.000001);
 	
 	test_accuracy(quotes, wordvectors, parameters, labels, wordcount);
 	
@@ -173,7 +173,7 @@ void gradiend_descent(int **vectors, double *parameters, int wordcount, int *lab
         }
         total_loss /= MAX_QUOTE;
 
-        printf("Iteration %d: Loss: %lf\n", i + 1, total_loss);
+        printf("Iteration %d: Loss: %lf\n", i + 1, fabs(total_loss));
 
         i++;
     } while ((fabs(total_loss - last_loss) > error || i == 1) && i < maxiter);
@@ -208,7 +208,7 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
 		}
 		total_loss /= MAX_QUOTE*TRAIN_PERC;
-		printf("\nIteration %d: 	Loss: %lf", i+1, total_loss);
+		printf("\nIteration %d: 	Loss: %lf", i+1, fabs(total_loss));
 		stepsize *=	0.975;	i++;
 	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
 	
@@ -221,42 +221,73 @@ void stoc_grad_desc(int **vectors, double *parameters, int wordcount, int *label
 	
 }
 
-void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2){
-	int i, j, k;
-	double *gradients, total_loss=0, last_loss, m, v, m_hat, v_hat;
+void adam(int **vectors, double *parameters, int wordcount, int *labels, double stepsize, int maxiter, double error, double beta1, double beta2, double epsilon){
+	int i, t, z;
+	double *gradients, total_loss=0, last_loss, *m, *v, m_hat, v_hat, y_std, y_hat_std;
 	gradients = (double*) malloc(wordcount*sizeof(double));
-	if( gradients == NULL ){
+	m = (double*) malloc(wordcount*sizeof(double));
+	v = (double*) malloc(wordcount*sizeof(double));
+	if( v == NULL || m == NULL || gradients == NULL ){
 		printf("\nMemory allocation failed. Exiting.");
 		exit(1);
 	}
+	int j;
+	
 	for( i=0; i<wordcount; i++ ){
-		gradients[i] = 0;
+		m[i] = 0;    v[i] = 0;
 	}
+	i=0;    epsilon = 0.000001;
 	
-	
-	m=0;   v=0;   i=0;
 	do{
 		last_loss = total_loss;
 		total_loss = 0;
 		
-		for( j=0; j<wordcount; j++ ){
-			
-			for( k=0; k<MAX_QUOTE*TRAIN_PERC; k++ ){
-				
+		for( t=0; t<wordcount; t++ ){
+			for( z=0; z<wordcount; z++ ){
+				gradients[z] = 0;
 			}
 			
+			for( z=0; z<MAX_QUOTE*TRAIN_PERC; z++ ){
+				y_std = (labels[z] + 1) / 2;
+                y_hat_std = (compute_func(vectors[t], parameters, wordcount) + 1) / 2;
+                gradients[t] += (y_hat_std - y_std) * vectors[z][t];
+                printf("\nt=%d    y_std = %lf, y_hat_std = %lf, gradients[%d] = %lf", t, y_std, y_hat_std, t, gradients[t]);
+			}
 			
+			for( j=0; j<wordcount; j++ ){
+				printf("\nparameters[%d] = [ %lf ]", j, parameters[j]);
+			}
+			gradients[t] /= MAX_QUOTE*TRAIN_PERC;
+			printf("final value of gradients[%d] = %lf", t, gradients[t]);
 			
+			m[t] = beta1*m[t] + ( 1-beta1 )*gradients[t];
+			v[t] = beta2*v[t] + ( 1-beta2 )* (gradients[t]*gradients[t]);
+			m_hat = m[t] / ( 1-pow(beta1, i) );
+			v_hat = v[t] / ( 1-pow(beta2, i) );
+			
+			parameters[t] -= stepsize * m_hat / (sqrt(v_hat) + epsilon);
 		}
 		
 		
-		
-		
-		
-		
+		total_loss = 0;
+		for( t=0; t<MAX_QUOTE*TRAIN_PERC; t++ ){
+			total_loss += compute_loss(vectors[t], parameters, wordcount, labels);
+		}
+		total_loss /= MAX_QUOTE*TRAIN_PERC;
+		printf("\nIteration %d: 	Loss: %lf", i+1, fabs(total_loss));
 		
 		i++;
 	} while( ( fabs(total_loss - last_loss) > error || i==1 ) && i<maxiter );
+	
+	if( i < maxiter ){
+		printf("\nModel succesfully converged at %d. iteration.", i);
+	}
+	else{
+		printf("\nModel training lasted for a full %d iterations.", maxiter);
+	}
+	free(gradients);
+    free(m);
+    free(v);
 	
 }
 
